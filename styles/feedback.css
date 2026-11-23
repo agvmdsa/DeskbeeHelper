@@ -1,0 +1,153 @@
+/* Feedback: confirm/progress/result boxes, tags, progress bar, text states. */
+
+.confirm-box,
+.progress-box,
+.hint-box,
+.error-box,
+.result-box {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.hint-box {
+  color: var(--text-2);
+}
+
+.error-box {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
+
+.error-box p {
+  margin: 0 0 6px;
+}
+
+.error-box p:last-child {
+  margin-bottom: 0;
+}
+
+.result-box {
+  border-color: var(--success-border);
+  background: var(--success-soft);
+}
+
+.result-box small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-2);
+}
+
+.result-box .failed-text {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--danger);
+}
+
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  margin: 10px 0 12px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.plan-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-block;
+  min-width: 124px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tag-book {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.tag-skip {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.progress {
+  height: 6px;
+  margin: 10px 0 8px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+}
+
+.progress div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.4s var(--ease-out);
+}
+
+.text-success {
+  color: var(--success) !important;
+}
+
+.text-error {
+  color: var(--danger) !important;
+}
+
+.text-warning {
+  margin-bottom: 8px;
+  color: var(--warning);
+}
+
+.loading,
+.no-dat
+
+.plan-day {
+  min-width: 92px;
+  color: var(--text);
+}
+
+.plan-time {
+  color: var(--text-3);
+}
+
+/* exception days: primary-colored text + terracotta marker (marker is non-text, 3:1 is enough) */
+.plan-time.is-exception {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.plan-time.is-exception::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--terracotta);
+}

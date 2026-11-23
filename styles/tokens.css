@@ -1,0 +1,108 @@
+/* Design tokens shared by popup and options.
+   Palette from RouteForge (core/design-system/.../RouteForgeTheme.kt):
+   light = logo cream + espresso brown (default), dark = espresso.
+   Theme is chosen by <html data-theme="light|dark"> (see lib/theme.js). */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* surfaces */
+  --bg: #f6ecdd; /* LogoCream */
+  --surface: #fbf5ec; /* CreamSurface */
+  --surface-2: #f3e7d6;
+  --surface-3: #eedfc8; /* LogoCreamDeep */
+  --border: #e6d6bf;
+  --border-strong: #d2bc9c;
+
+  /* text */
+  --text: #2b1d12; /* OnCream */
+  --text-2: #6b4226; /* CoffeeBrown */
+  --text-3: #7a5a43;
+
+  /* primary = espresso brown, text on it = cream */
+  --accent: #4e2f1b; /* LogoEspresso */
+  --accent-hover: #6b4226;
+  --on-accent: #f6ecdd;
+  --accent-text: #4e2f1b;
+  --accent-soft: rgba(78, 47, 27, 0.08);
+  --accent-border: #c7ae8a; /* LogoTanDeep */
+  --accent-ring: rgba(193, 82, 28, 0.6); /* terracotta */
+
+  /* brand accent (RouteForge route line) */
+  --terracotta: #c1521c;
+
+  /* status */
+  --success: #276b44;
+  --success-soft: rgba(39, 107, 68, 0.11);
+  --success-border: rgba(39, 107, 68, 0.3);
+  --danger: #a8431a;
+  --danger-soft: rgba(168, 67, 26, 0.1);
+  --danger-soft-hover: rgba(168, 67, 26, 0.17);
+  --danger-border: rgba(168, 67, 26, 0.3);
+  --danger-strong: #a8431a;
+  --danger-strong-hover: #8f3814;
+  --on-danger: #fbf5ec;
+  --warning: #8a5a00;
+  --warning-soft: rgba(176, 120, 20, 0.13);
+
+  --shadow-card: 0 1px 2px rgba(78, 47, 27, 0.08), 0 6px 16px -8px rgba(78, 47, 27, 0.2);
+  --shadow-raised: 0 1px 2px rgba(78, 47, 27, 0.12);
+  --shadow-page: 0 1px 2px rgba(78, 47, 27, 0.08), 0 12px 32px -16px rgba(78, 47, 27, 0.25);
+
+  /* shape */
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%236b4226' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #241811; /* EspressoBackground */
+  --surface: #2f2117; /* EspressoSurface */
+  --surface-2: #3a2a1e;
+  --surface-3: #4a3826; /* BrownContainer */
+  --border: #403024;
+  --border-strong: #5a4532;
+
+  --text: #f3e9da; /* OnEspresso */
+  --text-2: #d8c8b2;
+  --text-3: #b39e85;
+
+  /* primary = warm tan, text on it = espresso */
+  --accent: #d9b98c; /* WarmTan */
+  --accent-hover: #e6cba3;
+  --on-accent: #241811;
+  --accent-text: #e2c59b;
+  --accent-soft: rgba(217, 185, 140, 0.12);
+  --accent-border: rgba(217, 185, 140, 0.45);
+  --accent-ring: rgba(224, 112, 58, 0.75);
+
+  --terracotta: #e0703a;
+
+  --success: #8fcb9b;
+  --success-soft: rgba(143, 203, 155, 0.12);
+  --success-border: rgba(143, 203, 155, 0.3);
+  --danger: #f08a62;
+  --danger-soft: rgba(240, 138, 98, 0.13);
+  --danger-soft-hover: rgba(240, 138, 98, 0.2);
+  --danger-border: rgba(240, 138, 98, 0.35);
+  --danger-strong: #b04a19;
+  --danger-strong-hover: #c1521c;
+  --on-danger: #fbf5ec;
+  --warning: #e9b45c;
+  --warning-soft: rgba(233, 180, 92, 0.14);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 16px -8px rgba(0, 0, 0, 0.5);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23d8c8b2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+}

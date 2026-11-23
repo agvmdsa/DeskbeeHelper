@@ -1,0 +1,243 @@
+/* Form controls: inputs, labels, checkboxes, weekday pills. */
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-group.narrow {
+  flex: 0 0 76px;
+}
+
+label {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition:
+    border-color 0.2s var(--ease-out),
+    background-color 0.2s var(--ease-out);
+}
+
+input::placeholder {
+  color: var(--text-3);
+}
+
+input:hover,
+select:hover {
+  border-color: var(--border-strong);
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  background-color: var(--surface-2);
+}
+
+/* Custom chevron: the native arrow sits flush against rounded/pill edges.
+   --chevron is a per-theme SVG (tokens.css). */
+select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 12px;
+  cursor: pointer;
+}
+
+input::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.check-all,
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.check-all {
+  padding: 6px 12px 6px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* weekday pills */
+
+.weekday-picker {
+  display: flex;
+  gap: 5px;
+}
+
+.weekday-toggle {
+  flex: 1;
+  cursor: pointer;
+}
+
+.weekday-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.weekday-toggle span {
+  display: block;
+  padding: 7px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  user-select: none;
+  transition:
+    background-color 0.2s var(--ease-out),
+    border-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.weekday-toggle:hover span {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.weekday-toggle input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.weekday-toggle input:focus-visible + span {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* ---------- schedule: default time + per-day exceptions ---------- */
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.schedule legend {
+  padding: 0 6px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.time-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+}
+
+.time-row-label {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding-left: 4px;
+}
+
+.time-sep {
+  color: var(--text-3);
+}
+
+.time-row input[type="time"] {
+  background-color: var(--bg);
+}
+
+.time-exceptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-exceptions:empty {
+  display: none;
+}
+
+.exception-row {
+  padding: 6px 4px 6px 0;
+  border-radius: var(--r-md);
+}
+
+.exception-row.invalid input,
+.exception-row.invalid select {
+  border-color: var(--danger-border);
+}
+
+.exception-row select {
+  padding: 8px 30px 8px 14px;
+  border-radius: var(--r-pill);
+  background-color: var(--accent-soft);
+  background-position: right 11px center;
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.schedule-status:empty {
+  display: none;
+}
+
+.schedule-status {
+  color: var(--danger);
+}
