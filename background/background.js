@@ -1,7 +1,7 @@
 // background.js — runs batch jobs (book / cancel) so they survive the popup closing.
 // Progress is written to chrome.storage.local "job"; the popup only renders it.
 import { getEffectiveOptions } from "../config/constants.js";
-import { createBooking, deleteBooking } from "../lib/api.js";
+import { createBooking, deleteBooking, updateBooking } from "../lib/api.js";
 import { toDeskbeeDate } from "../lib/planner.js";
 import { checkForUpdate } from "../lib/update.js";
 
@@ -45,6 +45,23 @@ async function cancelOne(token, opts, item) {
   }
 }
 
+async function editOne(token, opts, item) {
+  try {
+    await updateBooking(token, opts, item.uuid, {
+      placeUuid: item.placeUuid,
+      date: toDeskbeeDate(item.date),
+      startTime: item.startTime,
+      endTime: item.endTime,
+    });
+    return { ok: true, desk: item.deskNumber };
+  } catch (e) {
+    if (e.message === "Unauthorized") throw e;
+    return { ok: false, desk: item.deskNumber, error: e.message };
+  }
+}
+
+const RUNNERS = { book: bookOne, cancel: cancelOne, edit: editOne };
+
 async function runJob(kind, items) {
   running = true;
   const job = {
@@ -66,8 +83,7 @@ async function runJob(kind, items) {
       job.current = item.label;
       await saveJob(job);
 
-      const result =
-        kind === "book" ? await bookOne(authToken, opts, item) : await cancelOne(authToken, opts, item);
+      const result = await RUNNERS[kind](authToken, opts, item);
       job.results.push({ label: item.label, ...result });
       job.done++;
       await saveJob(job);
@@ -92,7 +108,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse({ ok: false, errorCode: "job_busy" });
     return;
   }
-  if (!["book", "cancel"].includes(msg.kind) || !Array.isArray(msg.items) || !msg.items.length) {
+  if (!Object.hasOwn(RUNNERS, msg.kind) || !Array.isArray(msg.items) || !msg.items.length) {
     sendResponse({ ok: false, errorCode: "job_empty" });
     return;
   }

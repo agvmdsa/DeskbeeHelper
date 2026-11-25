@@ -148,12 +148,13 @@ body.detached .panes {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.toolbar .danger {
+.toolbar #edit-selected {
   margin-left: auto;
 }
 
@@ -244,9 +245,36 @@ body.detached .panes {
   font-size: 12px;
 }
 
-.row-cancel {
+.row-actions {
   grid-column: 3;
   grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.row-edit {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition:
+    background-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.row-edit:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.row-cancel {
   display: inline-grid;
   place-items: center;
   min-width: 30px;

@@ -99,6 +99,10 @@ npm run build   # gera dist/DeskbeeHelper-v<versão>.zip
 
 Para publicar uma versão: atualize `version` no `manifest.json`, adicione a entrada no topo do `changelog.md` e envie uma tag `vX.Y.Z`. O workflow de release gera o `.zip` e publica em Releases.
 
+### Licença
+
+[MIT](LICENSE): uso, cópia, modificação e distribuição livres, inclusive dentro de empresas, mantendo o aviso de copyright.
+
 ### Créditos
 
 A ideia e a primeira versão são do meu amigo [Filipe](https://github.com/filipe-ms), que criou a extensão para facilitar a nossa vida marcando a baia em vários dias de uma vez só. A partir dela, fui implementando funcionalidades e deixando tudo mais prático conforme víamos necessidade.
@@ -161,6 +165,10 @@ npm run build   # builds dist/DeskbeeHelper-v<version>.zip
 ```
 
 To release: bump `version` in `manifest.json`, add an entry at the top of `changelog.md` and push a `vX.Y.Z` tag. The release workflow builds the `.zip` and publishes it on Releases.
+
+### License
+
+[MIT](LICENSE): free to use, copy, modify and distribute, including inside companies, as long as the copyright notice is kept.
 
 ### Credits
 
