@@ -18,6 +18,8 @@ import {
   jwtExpiry,
   timeForDay,
   validateSchedule,
+  bookingTimeRange,
+  buildEditPlan,
 } from "../lib/planner.js";
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +32,8 @@ const STALE_JOB_MS = 60_000;
 const X_ICON =
   '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const DEFAULT_MAX_DAYS_AHEAD = 30;
+const PENCIL_ICON =
+  '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>';
 
 async function getMaxDaysAhead() {
   const { settings = {} } = await chrome.storage.local.get(["settings"]);
@@ -133,8 +137,12 @@ function renderBookings() {
               <span class="booking-time">${esc(time)}</span>
               <span class="status-badge status-${esc(status.toLowerCase())}">${esc(statusText)}</span>
             </div>
-            <button type="button" class="row-cancel" data-uuid="${uuid}" title="${esc(t("cancel_this"))}"
-              aria-label="${esc(t("cancel_x", { x: bookingLabel(b) }))}" ${can ? "" : "disabled"}>${X_ICON}</button>
+            <div class="row-actions">
+              <button type="button" class="row-edit" data-uuid="${uuid}" title="${esc(t("edit_this"))}"
+                aria-label="${esc(t("edit_x", { x: bookingLabel(b) }))}" ${can ? "" : "disabled"}>${PENCIL_ICON}</button>
+              <button type="button" class="row-cancel" data-uuid="${uuid}" title="${esc(t("cancel_this"))}"
+                aria-label="${esc(t("cancel_x", { x: bookingLabel(b) }))}" ${can ? "" : "disabled"}>${X_ICON}</button>
+            </div>
           </div>`;
       })
       .join("") +
@@ -147,6 +155,9 @@ function updateCancelButton() {
   const btn = $("cancel-selected");
   btn.textContent = t("cancel_selected", { n });
   btn.disabled = n === 0 || state.jobRunning;
+  const editBtn = $("edit-selected");
+  editBtn.textContent = t("edit_selected", { n });
+  editBtn.disabled = n === 0 || state.jobRunning;
 
   const cancellable = state.bookings.filter(isCancellable);
   const all = $("select-all");
@@ -169,6 +180,107 @@ function confirmCancel(items) {
   $("confirm-cancel").onclick = () => startJob("cancel", items);
 }
 
+// ---------- Edit (individual or batch) ----------
+
+const selectedBookings = () =>
+  state.bookings
+    .filter((b) => state.selected.has(b.uuid))
+    .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
+
+function openEditPanel(list, values) {
+  const single = list.length === 1;
+  const cur = single ? bookingTimeRange(list[0]) : null;
+  const v = values || {
+    startTime: cur?.startTime || "",
+    endTime: cur?.endTime || "",
+    desk: single ? bookingDeskNumber(list[0]) : "",
+  };
+  const status = $("list-status");
+  status.innerHTML = `
+    <div class="confirm-box">
+      <div><strong>${esc(single ? t("edit_title_one") : t("edit_title_n", { n: list.length }))}</strong>
+        ${single ? `· ${esc(bookingLabel(list[0]))}` : ""}</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="edit-start">${esc(t("edit_start"))}</label>
+          <input type="time" id="edit-start" value="${esc(v.startTime)}" />
+        </div>
+        <div class="form-group">
+          <label for="edit-end">${esc(t("edit_end"))}</label>
+          <input type="time" id="edit-end" value="${esc(v.endTime)}" />
+        </div>
+        <div class="form-group narrow">
+          <label for="edit-desk">${esc(t("edit_desk"))}</label>
+          <input type="text" id="edit-desk" value="${esc(v.desk)}" placeholder="${esc(t("edit_keep"))}" />
+        </div>
+      </div>
+      ${single ? "" : `<small>${esc(t("edit_batch_hint"))}</small>`}
+      <div class="button-row">
+        <button type="button" id="review-edit">${esc(t("review"))}</button>
+        <button type="button" class="ghost" id="close-edit">${esc(t("back"))}</button>
+      </div>
+    </div>`;
+  $("close-edit").onclick = () => (status.innerHTML = "");
+  $("review-edit").onclick = () =>
+    reviewEdit(list, {
+      startTime: $("edit-start").value,
+      endTime: $("edit-end").value,
+      desk: $("edit-desk").value.trim(),
+    });
+}
+
+function reviewEdit(list, changes) {
+  const status = $("list-status");
+  const plan = buildEditPlan({
+    bookings: list,
+    changes,
+    deskMap: state.deskMap,
+    today: toISODate(new Date()),
+  });
+  const toEdit = plan.filter((p) => p.action === "edit");
+  const byUuid = new Map(list.map((b) => [b.uuid, b]));
+  const rangeText = (r) => (r ? `${r.startTime}–${r.endTime}` : "?");
+
+  const line = (p) => {
+    const b = byUuid.get(p.uuid);
+    const day = esc(p.date ? fmtDay(p.date) : "?");
+    const tag = `<span class="tag ${p.action === "edit" ? "tag-book" : "tag-skip"}">${esc(t(`tag_${p.action}`))}</span>`;
+    if (p.action !== "edit") return `<li>${tag} <span class="plan-day">${day}</span></li>`;
+    const before = bookingTimeRange(b);
+    const oldDesk = bookingDeskNumber(b);
+    const parts = [
+      `${esc(rangeText(before))} → ${esc(rangeText(p))}`,
+      p.deskNumber !== oldDesk ? esc(`${t("desk_n", { n: oldDesk })} → ${t("desk_n", { n: p.deskNumber })}`) : "",
+    ].filter(Boolean);
+    return `<li>${tag} <span class="plan-day">${day}</span> <small>${parts.join(" · ")}</small></li>`;
+  };
+
+  status.innerHTML = `
+    <div class="confirm-box">
+      <div><strong>${esc(t("edit_n_question", { n: toEdit.length }))}</strong></div>
+      <ul class="plan-list">${plan.map(line).join("")}</ul>
+      <small>${esc(t("edit_emails_notice"))}</small>
+      <div class="button-row">
+        <button type="button" id="confirm-edit" ${toEdit.length ? "" : "disabled"}>${esc(t("confirm"))}</button>
+        <button type="button" class="ghost" id="back-edit">${esc(t("back"))}</button>
+      </div>
+    </div>`;
+  $("back-edit").onclick = () => openEditPanel(list, changes);
+  $("confirm-edit").onclick = () =>
+    startJob(
+      "edit",
+      toEdit.map((p) => ({
+        uuid: p.uuid,
+        date: p.date,
+        placeUuid: p.placeUuid,
+        deskNumber: p.deskNumber,
+        startTime: p.startTime,
+        endTime: p.endTime,
+        label: bookingLabel(byUuid.get(p.uuid)),
+      })),
+    );
+}
+
 function setupListTab() {
   const container = $("reserves");
 
@@ -182,6 +294,12 @@ function setupListTab() {
   });
 
   container.addEventListener("click", (e) => {
+    const editBtn = e.target.closest(".row-edit");
+    if (editBtn && !editBtn.disabled && !state.jobRunning) {
+      const booking = state.bookings.find((b) => b.uuid === editBtn.dataset.uuid);
+      if (booking) openEditPanel([booking]);
+      return;
+    }
     const btn = e.target.closest(".row-cancel");
     if (!btn || btn.disabled || state.jobRunning) return;
     const booking = state.bookings.find((b) => b.uuid === btn.dataset.uuid);
@@ -222,6 +340,11 @@ function setupListTab() {
     state.selected = new Set(matches.map((b) => b.uuid));
     renderBookings();
     $("list-status").innerHTML = `<div class="hint-box">${esc(t("n_selected_hint", { n: matches.length }))}</div>`;
+  });
+
+  $("edit-selected").addEventListener("click", () => {
+    const list = selectedBookings();
+    if (list.length) openEditPanel(list);
   });
 
   $("cancel-selected").addEventListener("click", () => {
@@ -513,6 +636,9 @@ async function startJob(kind, items) {
   if (!res?.ok) target.innerHTML = errorBox(esc(res?.errorCode ? t(res.errorCode) : t("could_not_start")));
 }
 
+const PROGRESS_KEY = { book: "booking_progress", cancel: "canceling_progress", edit: "editing_progress" };
+const DONE_KEY = { book: "n_booked", cancel: "n_canceled", edit: "n_edited" };
+
 let lastFinishedAt = null;
 
 function renderJob(job) {
@@ -529,7 +655,7 @@ function renderJob(job) {
     const pct = job.total ? Math.round((job.done / job.total) * 100) : 0;
     target.innerHTML = `
       <div class="progress-box">
-        <div>${esc(t(job.kind === "book" ? "booking_progress" : "canceling_progress", { done: job.done, total: job.total }))}${job.current ? ` · ${esc(job.current)}` : ""}</div>
+        <div>${esc(t(PROGRESS_KEY[job.kind], { done: job.done, total: job.total }))}${job.current ? ` · ${esc(job.current)}` : ""}</div>
         <div class="progress"><div style="width:${pct}%"></div></div>
         <small>${esc(t("can_close"))}</small>
       </div>`;
@@ -544,8 +670,8 @@ function renderJob(job) {
   const jobError = job.errorCode ? t(job.errorCode) : job.error || (stale ? t("job_interrupted") : "");
   target.innerHTML = `
     <div class="result-box">
-      <div class="text-success" style="font-weight:500">${esc(t(job.kind === "book" ? "n_booked" : "n_canceled", { n: ok.length }))}</div>
-      ${job.kind === "book" && ok.length ? `<small>${ok.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small>` : ""}
+      <div class="text-success" style="font-weight:500">${esc(t(DONE_KEY[job.kind], { n: ok.length }))}</div>
+      ${job.kind !== "cancel" && ok.length ? `<small>${ok.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small>` : ""}
       ${failed.length ? `<div class="failed-text">${esc(t("failed_n", { n: failed.length }))}<br><small>${failed.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small></div>` : ""}
       ${jobError ? `<div class="failed-text">${esc(jobError)}</div>` : ""}
     </div>`;

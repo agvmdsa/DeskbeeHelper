@@ -14,6 +14,7 @@ const INCLUDE = [
   "styles",
   "icons",
   "README.md",
+  "LICENSE",
   "changelog.md",
 ];
 

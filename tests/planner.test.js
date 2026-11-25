@@ -15,6 +15,10 @@ import {
   jwtExpiry,
   timeForDay,
   validateSchedule,
+  bookingTimeRange,
+  bookingPlaceUuid,
+  buildEditPlan,
+  editBody,
 } from "../lib/planner.js";
 
 test("toISODate uses local date, not UTC", () => {
@@ -264,4 +268,97 @@ test("i18n: Portuguese and English dictionaries have the same keys", async () =>
   const pt = Object.keys(dictionaries.pt).sort();
   assert.deepEqual(pt.filter((k) => !en.includes(k)), [], "keys only in pt");
   assert.deepEqual(en.filter((k) => !pt.includes(k)), [], "keys only in en");
+});
+
+// ---------- edit ----------
+
+const mk = (uuid, date, start, end, desk, placeUuid) => ({
+  uuid,
+  start_date: `${date}T${start}:00`,
+  end_date: `${date}T${end}:00`,
+  place: { name: `X.${desk}`, ...(placeUuid ? { uuid: placeUuid } : {}) },
+  status: { name: "reserved" },
+});
+
+test("bookingTimeRange reads local HH:MM from start/end dates", () => {
+  assert.deepEqual(bookingTimeRange(mk("a", "2026-11-26", "13:00", "17:30", "308")), {
+    startTime: "13:00",
+    endTime: "17:30",
+  });
+  assert.equal(bookingTimeRange({}), null);
+});
+
+test("bookingPlaceUuid prefers place.uuid, falls back to desk map", () => {
+  assert.equal(bookingPlaceUuid(mk("a", "2026-11-26", "13:00", "17:00", "308", "P1"), {}), "P1");
+  assert.equal(bookingPlaceUuid(mk("a", "2026-11-26", "13:00", "17:00", "308"), { 308: "P2" }), "P2");
+  assert.equal(bookingPlaceUuid(mk("a", "2026-11-26", "13:00", "17:00", "308"), {}), null);
+});
+
+const today = "2026-11-25";
+const bk = [
+  mk("a", "2026-11-26", "13:00", "17:00", "308", "P308"),
+  mk("b", "2026-11-27", "13:00", "17:00", "308", "P308"),
+];
+
+test("buildEditPlan: empty fields keep current values", () => {
+  const plan = buildEditPlan({ bookings: bk, changes: { startTime: "14:00" }, deskMap: {}, today });
+  assert.deepEqual(plan.map((p) => [p.uuid, p.action, p.startTime, p.endTime, p.placeUuid, p.deskNumber]), [
+    ["a", "edit", "14:00", "17:00", "P308", "308"],
+    ["b", "edit", "14:00", "17:00", "P308", "308"],
+  ]);
+  assert.equal(plan[0].date, "2026-11-26");
+});
+
+test("buildEditPlan: new desk resolves uuid from the desk map", () => {
+  const plan = buildEditPlan({ bookings: bk, changes: { desk: "309" }, deskMap: { 309: "P309" }, today });
+  assert.equal(plan[0].action, "edit");
+  assert.equal(plan[0].placeUuid, "P309");
+  assert.equal(plan[0].deskNumber, "309");
+});
+
+test("buildEditPlan: unknown desk is skipped", () => {
+  const plan = buildEditPlan({ bookings: bk, changes: { desk: "999" }, deskMap: {}, today });
+  assert.deepEqual(plan.map((p) => p.action), ["skip-no-desk", "skip-no-desk"]);
+});
+
+test("buildEditPlan: no effective change is skipped", () => {
+  const plan = buildEditPlan({
+    bookings: bk,
+    changes: { startTime: "13:00", desk: "308" },
+    deskMap: { 308: "P308" },
+    today,
+  });
+  assert.deepEqual(plan.map((p) => p.action), ["skip-unchanged", "skip-unchanged"]);
+});
+
+test("buildEditPlan: end before start is skipped per booking", () => {
+  const plan = buildEditPlan({
+    bookings: [mk("a", "2026-11-26", "13:00", "17:00", "308", "P"), mk("b", "2026-11-27", "10:00", "11:00", "308", "P")],
+    changes: { startTime: "12:00" },
+    deskMap: {},
+    today,
+  });
+  assert.deepEqual(plan.map((p) => p.action), ["edit", "skip-range"]);
+});
+
+test("buildEditPlan: past days and non-cancellable bookings are skipped", () => {
+  const past = mk("p", "2026-11-24", "13:00", "17:00", "308", "P");
+  const canceled = { ...mk("c", "2026-11-28", "13:00", "17:00", "308", "P"), status: { name: "canceled" } };
+  const plan = buildEditPlan({ bookings: [past, canceled], changes: { startTime: "14:00" }, deskMap: {}, today });
+  assert.deepEqual(plan.map((p) => p.action), ["skip-past", "skip-status"]);
+});
+
+test("editBody mirrors the Deskbee web app PUT payload", () => {
+  assert.deepEqual(
+    editBody("BOOKING", { placeUuid: "PLACE", date: "26/11/2026", startTime: "13:01", endTime: "17:00" }),
+    {
+      date: "26/11/2026",
+      start_hour: "13:01",
+      end_hour: "17:00",
+      type: "workspace",
+      uuid: "PLACE",
+      booking_uuid: "PLACE",
+      booking_uuid_identifier: "BOOKING",
+    },
+  );
 });
