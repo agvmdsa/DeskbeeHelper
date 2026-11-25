@@ -1,5 +1,11 @@
 # Changelog
 
+# Version 1.1.0
+
+- Edit reserves: change check-in, check-out and desk of one reserve (pencil on the row) or many at once ("Edit selected"), with a before/after review. Empty fields keep each reserve's current value.
+- Deskbee edits by canceling and recreating, so each edit sends a cancellation email and a new-booking email.
+- MIT license added, so the extension can be used and modified freely.
+
 # Version 1.0.0
 
 First release.
