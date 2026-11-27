@@ -1,7 +1,7 @@
 // background.js — runs batch jobs (book / cancel) so they survive the popup closing.
 // Progress is written to chrome.storage.local "job"; the popup only renders it.
 import { getEffectiveOptions } from "../config/constants.js";
-import { createBooking, deleteBooking, updateBooking } from "../lib/api.js";
+import { createBooking, deleteBooking, updateBooking, checkinBooking, checkoutBooking } from "../lib/api.js";
 import { toDeskbeeDate } from "../lib/planner.js";
 import { checkForUpdate } from "../lib/update.js";
 
@@ -60,7 +60,24 @@ async function editOne(token, opts, item) {
   }
 }
 
-const RUNNERS = { book: bookOne, cancel: cancelOne, edit: editOne };
+async function checkOne(action, token, opts, item) {
+  try {
+    if (action === "checkin") await checkinBooking(token, opts, { placeUuid: item.placeUuid, bookingUuid: item.uuid });
+    else await checkoutBooking(token, opts, item.uuid);
+    return { ok: true };
+  } catch (e) {
+    if (e.message === "Unauthorized") throw e;
+    return { ok: false, error: e.message };
+  }
+}
+
+const RUNNERS = {
+  book: bookOne,
+  cancel: cancelOne,
+  edit: editOne,
+  checkin: (...args) => checkOne("checkin", ...args),
+  checkout: (...args) => checkOne("checkout", ...args),
+};
 
 async function runJob(kind, items) {
   running = true;

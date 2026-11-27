@@ -139,6 +139,17 @@
       </div>
     </main>
 
+    <dialog id="app-dialog" class="app-dialog" aria-labelledby="dialog-title">
+      <form method="dialog">
+        <h3 id="dialog-title"></h3>
+        <div id="dialog-body"></div>
+        <div class="button-row">
+          <button type="submit" id="dialog-confirm" value="ok"></button>
+          <button type="submit" id="dialog-cancel" class="ghost" value="cancel"></button>
+        </div>
+      </form>
+    </dialog>
+
     <footer class="status-bar">
       <div id="status-line" class="status-line"></div>
       <div class="lang-switch" role="group" data-i18n-label="language">

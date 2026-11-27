@@ -1,6 +1,8 @@
 export const urls = {
   bookings: "https://api.deskbee.io/api/bookings",
   myBookings: "https://api.deskbee.io/api/bookings/me",
+  checkin: "https://api.deskbee.io/api/checkins",
+  checkout: "https://api.deskbee.io/api/checkins/checkout",
 };
 
 // GitHub repository whose releases are checked for updates (must be public).

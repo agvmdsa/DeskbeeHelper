@@ -14,12 +14,17 @@ import {
   buildBookingPlan,
   filterBookings,
   isCancellable,
+  canCancel,
+  isCheckedIn,
   floorFromBookings,
   jwtExpiry,
   timeForDay,
   validateSchedule,
   bookingTimeRange,
   buildEditPlan,
+  canCheckin,
+  canCheckout,
+  checkinTime,
 } from "../lib/planner.js";
 
 const $ = (id) => document.getElementById(id);
@@ -39,6 +44,20 @@ async function getMaxDaysAhead() {
   const { settings = {} } = await chrome.storage.local.get(["settings"]);
   const n = settings.maxDaysAhead ?? DEFAULT_MAX_DAYS_AHEAD;
   return Number(n) > 0 ? Number(n) : 0; // 0 = no limit
+}
+
+/** Modal explanation + confirm. Resolves true when the user confirms. */
+function askDialog({ title, html, confirmLabel, cancelLabel }) {
+  const dlg = $("app-dialog");
+  $("dialog-title").textContent = title;
+  $("dialog-body").innerHTML = html;
+  $("dialog-confirm").textContent = confirmLabel;
+  $("dialog-cancel").textContent = cancelLabel;
+  return new Promise((resolve) => {
+    dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true });
+    dlg.returnValue = "cancel";
+    dlg.showModal();
+  });
 }
 
 const state = {
@@ -119,16 +138,21 @@ function renderBookings() {
         const status = b.status?.name || "reserved";
         const statusLabel = t(`status_${status.toLowerCase()}`);
         const statusText = statusLabel.startsWith("status_") ? status : statusLabel;
-        const can = isCancellable(b);
+        const can = canCancel(b);
+        const editable = isCancellable(b);
+        const checkedIn = isCheckedIn(b);
         const uuid = esc(b.uuid);
         const sel = state.selected.has(b.uuid);
+        const action = canCheckin(b) ? "checkin" : canCheckout(b) ? "checkout" : "";
+        const inTime = checkinTime(b);
         const fullName = b.place?.name_display || b.place?.name || t("unknown_desk");
         const num = bookingDeskNumber(b);
         const dateText = iso ? fmtDay(iso) : "?";
         return `
           <div class="booking-item ${sel ? "selected" : ""}">
             <input type="checkbox" class="row-check" data-uuid="${uuid}" aria-label="${esc(t("select_x", { x: bookingLabel(b) }))}"
-              ${sel ? "checked" : ""} ${can ? "" : "disabled"} />
+              ${sel ? "checked" : ""} ${can ? "" : "disabled"}
+              ${checkedIn ? `title="${esc(t("select_blocked_checkedin"))}"` : ""} />
             <div class="booking-main">
               <span class="booking-date">${esc(dateText)}</span>
               <span class="booking-info" title="${esc(fullName)}">${num ? esc(t("desk_n", { n: num })) : esc(fullName)}</span>
@@ -136,11 +160,19 @@ function renderBookings() {
             <div class="booking-meta">
               <span class="booking-time">${esc(time)}</span>
               <span class="status-badge status-${esc(status.toLowerCase())}">${esc(statusText)}</span>
+              ${inTime ? `<span class="checkin-time">${esc(t("checked_in_at", { time: inTime }))}</span>` : ""}
             </div>
             <div class="row-actions">
+              ${
+                action
+                  ? `<button type="button" class="row-checkin" data-uuid="${uuid}" data-action="${action}"
+                title="${esc(action === "checkin" ? t("checkin_hint", { n: b.tolerance ?? 30 }) : t("checkout_hint"))}"
+                aria-label="${esc(t(`${action}_x`, { x: bookingLabel(b) }))}">${esc(t(action))}</button>`
+                  : ""
+              }
               <button type="button" class="row-edit" data-uuid="${uuid}" title="${esc(t("edit_this"))}"
-                aria-label="${esc(t("edit_x", { x: bookingLabel(b) }))}" ${can ? "" : "disabled"}>${PENCIL_ICON}</button>
-              <button type="button" class="row-cancel" data-uuid="${uuid}" title="${esc(t("cancel_this"))}"
+                aria-label="${esc(t("edit_x", { x: bookingLabel(b) }))}" ${editable ? "" : "disabled"}>${PENCIL_ICON}</button>
+              <button type="button" class="row-cancel" data-uuid="${uuid}" title="${esc(checkedIn ? t("cancel_blocked_checkedin") : t("cancel_this"))}"
                 aria-label="${esc(t("cancel_x", { x: bookingLabel(b) }))}" ${can ? "" : "disabled"}>${X_ICON}</button>
             </div>
           </div>`;
@@ -159,7 +191,7 @@ function updateCancelButton() {
   editBtn.textContent = t("edit_selected", { n });
   editBtn.disabled = n === 0 || state.jobRunning;
 
-  const cancellable = state.bookings.filter(isCancellable);
+  const cancellable = state.bookings.filter(canCancel);
   const all = $("select-all");
   all.checked = cancellable.length > 0 && cancellable.every((b) => state.selected.has(b.uuid));
   all.indeterminate = n > 0 && !all.checked;
@@ -184,7 +216,7 @@ function confirmCancel(items) {
 
 const selectedBookings = () =>
   state.bookings
-    .filter((b) => state.selected.has(b.uuid))
+    .filter((b) => state.selected.has(b.uuid) && canCancel(b))
     .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
 
 function openEditPanel(list, values) {
@@ -215,6 +247,7 @@ function openEditPanel(list, values) {
         </div>
       </div>
       ${single ? "" : `<small>${esc(t("edit_batch_hint"))}</small>`}
+      ${list.some(isCheckedIn) ? `<div class="callout-warn">${esc(t("edit_checkedin_warning"))}</div>` : ""}
       <div class="button-row">
         <button type="button" id="review-edit">${esc(t("review"))}</button>
         <button type="button" class="ghost" id="close-edit">${esc(t("back"))}</button>
@@ -250,6 +283,7 @@ function reviewEdit(list, changes) {
     const oldDesk = bookingDeskNumber(b);
     const parts = [
       `${esc(rangeText(before))} → ${esc(rangeText(p))}`,
+      p.checkedIn ? `<strong>${esc(t("edit_loses_checkin"))}</strong>` : "",
       p.deskNumber !== oldDesk ? esc(`${t("desk_n", { n: oldDesk })} → ${t("desk_n", { n: p.deskNumber })}`) : "",
     ].filter(Boolean);
     return `<li>${tag} <span class="plan-day">${day}</span> <small>${parts.join(" · ")}</small></li>`;
@@ -266,7 +300,18 @@ function reviewEdit(list, changes) {
       </div>
     </div>`;
   $("back-edit").onclick = () => openEditPanel(list, changes);
-  $("confirm-edit").onclick = () =>
+  $("confirm-edit").onclick = async () => {
+    if (toEdit.some((p) => p.checkedIn)) {
+      const proceed = await askDialog({
+        title: t("dialog_edit_checkedin_title"),
+        html: `<p>${esc(t("dialog_edit_checkedin_body"))}</p>
+          <ul>${toEdit.filter((p) => p.checkedIn).map((p) => `<li>${esc(bookingLabel(byUuid.get(p.uuid)))}</li>`).join("")}</ul>
+          <p>${esc(t("dialog_edit_checkedin_tip"))}</p>`,
+        confirmLabel: t("dialog_edit_anyway"),
+        cancelLabel: t("back"),
+      });
+      if (!proceed) return;
+    }
     startJob(
       "edit",
       toEdit.map((p) => ({
@@ -279,6 +324,7 @@ function reviewEdit(list, changes) {
         label: bookingLabel(byUuid.get(p.uuid)),
       })),
     );
+  };
 }
 
 function setupListTab() {
@@ -294,6 +340,17 @@ function setupListTab() {
   });
 
   container.addEventListener("click", (e) => {
+    const checkBtn = e.target.closest(".row-checkin");
+    if (checkBtn && !state.jobRunning) {
+      const booking = state.bookings.find((b) => b.uuid === checkBtn.dataset.uuid);
+      if (!booking) return;
+      const action = checkBtn.dataset.action;
+      if (action === "checkin" ? !canCheckin(booking) : !canCheckout(booking)) return;
+      startJob(action, [
+        { uuid: booking.uuid, placeUuid: booking.place?.uuid || null, label: bookingLabel(booking) },
+      ]);
+      return;
+    }
     const editBtn = e.target.closest(".row-edit");
     if (editBtn && !editBtn.disabled && !state.jobRunning) {
       const booking = state.bookings.find((b) => b.uuid === editBtn.dataset.uuid);
@@ -321,7 +378,7 @@ function setupListTab() {
 
   $("select-all").addEventListener("change", (e) => {
     state.selected = e.target.checked
-      ? new Set(state.bookings.filter(isCancellable).map((b) => b.uuid))
+      ? new Set(state.bookings.filter(canCancel).map((b) => b.uuid))
       : new Set();
     renderBookings();
   });
@@ -349,7 +406,7 @@ function setupListTab() {
 
   $("cancel-selected").addEventListener("click", () => {
     const items = state.bookings
-      .filter((b) => state.selected.has(b.uuid))
+      .filter((b) => state.selected.has(b.uuid) && canCancel(b))
       .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)))
       .map((b) => ({ uuid: b.uuid, label: bookingLabel(b) }));
     if (items.length) confirmCancel(items);
@@ -636,8 +693,20 @@ async function startJob(kind, items) {
   if (!res?.ok) target.innerHTML = errorBox(esc(res?.errorCode ? t(res.errorCode) : t("could_not_start")));
 }
 
-const PROGRESS_KEY = { book: "booking_progress", cancel: "canceling_progress", edit: "editing_progress" };
-const DONE_KEY = { book: "n_booked", cancel: "n_canceled", edit: "n_edited" };
+const PROGRESS_KEY = {
+  book: "booking_progress",
+  cancel: "canceling_progress",
+  edit: "editing_progress",
+  checkin: "checking_in_progress",
+  checkout: "checking_out_progress",
+};
+const DONE_KEY = {
+  book: "n_booked",
+  cancel: "n_canceled",
+  edit: "n_edited",
+  checkin: "n_checked_in",
+  checkout: "n_checked_out",
+};
 
 let lastFinishedAt = null;
 
@@ -671,7 +740,7 @@ function renderJob(job) {
   target.innerHTML = `
     <div class="result-box">
       <div class="text-success" style="font-weight:500">${esc(t(DONE_KEY[job.kind], { n: ok.length }))}</div>
-      ${job.kind !== "cancel" && ok.length ? `<small>${ok.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small>` : ""}
+      ${["book", "edit"].includes(job.kind) && ok.length ? `<small>${ok.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small>` : ""}
       ${failed.length ? `<div class="failed-text">${esc(t("failed_n", { n: failed.length }))}<br><small>${failed.map((r) => `${esc(r.label)}: ${esc(detail(r))}`).join("<br>")}</small></div>` : ""}
       ${jobError ? `<div class="failed-text">${esc(jobError)}</div>` : ""}
     </div>`;
@@ -867,6 +936,11 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.job) renderJob(changes.job.newValue);
   });
+
+  // Server-side flags (is_can_checkin/out) change with the clock: keep the list fresh.
+  setInterval(() => {
+    if (!document.hidden && !state.jobRunning && state.opts?.xAppAccount) refreshBookings();
+  }, 60_000);
 
   init();
   showUpdateBanner();

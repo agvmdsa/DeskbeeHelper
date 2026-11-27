@@ -253,6 +253,29 @@ body.detached .panes {
   gap: 2px;
 }
 
+.row-checkin {
+  height: 28px;
+  margin-right: 4px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease-out);
+}
+
+.row-checkin:hover {
+  background: var(--accent-hover);
+}
+
+.checkin-time {
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
 .row-edit {
   display: inline-grid;
   place-items: center;
@@ -452,4 +475,50 @@ body.detached .update-banner {
   width: calc(100% - 32px);
   max-width: 1088px;
   margin-inline: auto;
+}
+
+/* modal dialog (confirmations that need an explanation) */
+
+.app-dialog {
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+.app-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.app-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.app-dialog p {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.app-dialog ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.callout-warn {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warning);
+  border-radius: var(--r-lg);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
