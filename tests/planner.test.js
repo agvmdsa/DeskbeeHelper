@@ -19,6 +19,13 @@ import {
   bookingPlaceUuid,
   buildEditPlan,
   editBody,
+  canCheckin,
+  canCheckout,
+  checkinTime,
+  checkinBody,
+  checkoutBody,
+  isCheckedIn,
+  canCancel,
 } from "../lib/planner.js";
 
 test("toISODate uses local date, not UTC", () => {
@@ -361,4 +368,70 @@ test("editBody mirrors the Deskbee web app PUT payload", () => {
       booking_uuid_identifier: "BOOKING",
     },
   );
+});
+
+// ---------- check-in / check-out ----------
+
+test("canCheckin / canCheckout follow the server flags only", () => {
+  assert.equal(canCheckin({ is_can_checkin: true }), true);
+  assert.equal(canCheckin({ is_can_checkin: false, is_can_checkout: true }), false);
+  assert.equal(canCheckin({}), false);
+  assert.equal(canCheckout({ is_can_checkout: true }), true);
+  assert.equal(canCheckout({ is_can_checkout: false, is_can_checkin: true }), false);
+  assert.equal(canCheckout(undefined), false);
+});
+
+test("checkinTime reads the local HH:MM of booking.checkin.checkin", () => {
+  assert.equal(checkinTime({ checkin: { checkin: "2026-11-27T15:56:10" } }), "15:56");
+  assert.equal(checkinTime({ checkin: null }), null);
+  assert.equal(checkinTime({}), null);
+});
+
+test("checkinBody mirrors the Deskbee web app payload", () => {
+  assert.deepEqual(checkinBody("PLACE", "BOOKING"), {
+    uuid: "PLACE",
+    booking_uuid: "BOOKING",
+    person_uuid: null,
+  });
+});
+
+test("checkoutBody mirrors the Deskbee web app payload", () => {
+  assert.deepEqual(checkoutBody("BOOKING"), { uuid: "BOOKING", is_thirdparty_checkout: false });
+});
+
+// ---------- checked-in bookings can only be checked out ----------
+
+const inBooking = {
+  ...mk("in", "2026-11-26", "13:00", "17:00", "308", "P"),
+  is_checkin: true,
+  is_checkout: false,
+  checkin: { checkin: "2026-11-26T12:40:00", checkout: null },
+};
+
+test("isCheckedIn is true only between check-in and check-out", () => {
+  assert.equal(isCheckedIn(inBooking), true);
+  assert.equal(isCheckedIn({ ...inBooking, is_checkout: true }), false);
+  assert.equal(isCheckedIn({ ...inBooking, is_checkout: false, checkin: { checkin: "x", checkout: "y" } }), false);
+  assert.equal(isCheckedIn(mk("a", "2026-11-26", "13:00", "17:00", "308")), false);
+});
+
+test("canCancel: cancellable status and not checked in", () => {
+  assert.equal(canCancel(mk("a", "2026-11-26", "13:00", "17:00", "308")), true);
+  assert.equal(canCancel(inBooking), false);
+  assert.equal(canCancel({ ...mk("c", "2026-11-26", "13:00", "17:00", "308"), status: { name: "canceled" } }), false);
+});
+
+test("filterBookings never selects a checked-in booking for cancel", () => {
+  const free = mk("free", "2026-11-26", "13:00", "17:00", "309");
+  assert.deepEqual(filterBookings([inBooking, free], {}).map((b) => b.uuid), ["free"]);
+});
+
+test("buildEditPlan allows a checked-in booking but flags it", () => {
+  const free = mk("free", "2026-11-27", "13:00", "17:00", "308", "P");
+  const plan = buildEditPlan({ bookings: [inBooking, free], changes: { startTime: "14:00" }, deskMap: {}, today: "2026-11-25" });
+  assert.deepEqual(plan.map((p) => [p.action, p.checkedIn]), [["edit", true], ["edit", false]]);
+});
+
+test("isCancellable still counts a checked-in booking as booked", () => {
+  assert.equal(isCancellable(inBooking), true);
 });

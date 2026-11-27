@@ -1,5 +1,12 @@
 # Changelog
 
+# Version 1.2.0
+
+- Check-in and check-out from the reserves list. The buttons show up only when Deskbee allows the action, so the extension never guesses the check-in window.
+- A reserve with check-in done can only be checked out: cancel and batch selection are blocked, with the reason on hover.
+- Editing a checked-in reserve warns first and asks for confirmation, because Deskbee edits by canceling and recreating (the check-in is probably lost).
+- The list refreshes every minute while the popup is open, so the check-in button appears when the window opens.
+
 # Version 1.1.0
 
 - Edit reserves: change check-in, check-out and desk of one reserve (pencil on the row) or many at once ("Edit selected"), with a before/after review. Empty fields keep each reserve's current value.
